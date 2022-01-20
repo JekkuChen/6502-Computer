@@ -169,7 +169,6 @@ char_loop:
 
     rts
 
-
 nmi:
     rti
 irq:
