@@ -3,6 +3,10 @@ PORTB = $6000
 PORTA = $6001
 DDRB = $6002
 DDRA = $6003
+PCR = $600C
+IFR = $600D
+IER = $600E
+
 
 counter = $0200 ; 1 byte
 pos = $0201 ; 1 byte
@@ -12,7 +16,7 @@ block2 = $0204 ; 1 byte
 block3 = $0205 ; 1 byte
 block4 = $0206 ; 1 byte
 block_n = $0207 ; 1 byte
-block_counter = $0208 ; 1 byte
+temp = $0208 ; 1 byte
 
 E = %10000000
 RW = %01000000
@@ -20,22 +24,27 @@ RS = %00100000
 
     .org $8000
 reset:  
-    ldx #$ff 
-    txs 
+    LDX #$ff 
+    TXS 
+    
+    LDA #$82
+    STA IER
+    LDA #$0
+    STA PCR
 
-    lda #%11111111 ; Set all pins on Port B to output 
-    sta DDRB
-    lda #%11100000 ; Set pins 5-7 on Port B to output
-    sta DDRA 
+    LDA #%11111111 ; Set all pins on Port B to output 
+    STA DDRB
+    LDA #%11100000 ; Set pins 5-7 on Port B to output
+    STA DDRA 
 
-    lda #%00111000 ; Set 8-bit mode; two line display; 5 x 8 font
-    jsr lcd_instruction
-    lda #%00001110 ; Display on; cursor on; blink off
-    jsr lcd_instruction
-    lda #%00000110 ; Increment and shift cursor; don't shift display (scroll)
-    jsr lcd_instruction
-    lda #%00000001 ; Clear Display
-    jsr lcd_instruction
+    LDA #%00111000 ; Set 8-bit mode; two line display; 5 x 8 font
+    JSR lcd_instruction
+    LDA #%00001110 ; Display on; cursor on; blink off
+    JSR lcd_instruction
+    LDA #%00000110 ; Increment and shift cursor; don't shift display (scroll)
+    JSR lcd_instruction
+    LDA #%00000001 ; Clear Display
+    JSR lcd_instruction
 
     ; Setup Code (Spawn Initial Wall and Player Ship)
     LDA #0
@@ -47,25 +56,14 @@ reset:
     STA block3
     STA block4
     STA block_n
-    STA block_counter
 
 
     LDA #%10101101 ; Send character ship to display
     JSR print_char
+    JSR spawn_wall ; Spawn a wall
+    CLI ; Allow Interrupts 
 
-    jsr delay_5
-    jsr spawn_wall ; Spawn a wall
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr spawn_wall ; Spawn a wall
+game_loop:
     jsr delay_5
     jsr move_display_left
     jsr delay_5
@@ -77,101 +75,7 @@ reset:
     jsr delay_5
     jsr move_display_left
     jsr spawn_wall ; Spawn a wall
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr spawn_wall ; Spawn a wall
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr spawn_wall ; Spawn a wall
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr spawn_wall ; Spawn a wall
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr spawn_wall ; Spawn a wall
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr spawn_wall ; Spawn a wall
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr spawn_wall ; Spawn a wall
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr spawn_wall ; Spawn a wall
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr spawn_wall ; Spawn a wall
-
-
-    ; Game Process (Move Display -> Allow Players to Move Ship -> Spawn Wall after every 4 blocks)
-loopper:
-
-loop:
-    jmp loop
+    jmp game_loop
 
 
 
@@ -220,6 +124,11 @@ print_char:
     rts
 
 delay_5: ; Generates a 0.5s delay (!# Note that this uses Y register) (About 500942 Cycles)
+    PHA ; Push Accumulator
+    TYA ; Move contents of Y into Accumulator
+    PHA ; Push Y into stack 
+    TXA ; Move contents of X into Accumulator
+    PHA ; Push X into stack
     LDX #$2 ; Sets X to 2
     TXA ; Store X in Accumulator
 delay_51:
@@ -232,14 +141,45 @@ delay_52:
     DEX ; Decrease X by 1
     TXA ; Store updated X to A
     BNE delay_51
+    PLA ; Pull X from stack
+    TAX ; Move contents of Accumulator into X
+    PLA ; Pull Y from Stack 
+    TAY ; Move contents of Accumulator into Y
+    PLA ; Pull Accumulator from Stack
     RTS 
 
 delay: ; Generates a 1 ms delay (!# Note that this uses X register) (About 1002 Cycles)
-    LDX #$C7 ; Sets X to 199
+    LDX change 
+    CPX #$0
+    BEQ delay_0
+    SEI
+    JSR move_ship
+    CLI
+    LDX #$0
+    STX change
+delay_0 
+    LDX #$C5 ; Sets X to 197
 delay_1:
     DEX ; Decrease X by 1 
     BNE delay_1 ; Continue delay if not finished
     RTS 
+lose:
+    LDA message,x
+    BEQ end
+    JSR print_char
+    INX
+    JMP lose
+     
+end:
+    jmp end
+message: .asciiz "You Lose!!"
+
+print_move_n_wait: ; Use by lose_setup only
+    JSR print_char
+    TYA ; Move contents of Y into Accumulator
+    JSR lcd_instruction ; Move A to either position $1 or $40
+    JSR delay_5
+    RTS
 
 move_display_left:
     ; Move all walls to the left once 
@@ -254,6 +194,20 @@ move_walls:
     LDA #%00100000 ; Print Clear to Display
     JSR print_char 
 
+    CPY #%10000001
+    BNE check_ship_position ; If wall is in pos 10000001, check if ship to the left
+    LDA #%0 ; Check if ship is in position 0
+    CMP pos
+    BEQ lose_setup ; If Position of Ship is correct, you lost
+    JMP move_walls_0 ; Else Continue
+check_ship_position
+    CPY #%11000001
+    BNE move_walls_0 ; If wall is in pos 11000001, check if ship to the left
+    LDA #%1 ; Check if ship is in position 1
+    CMP pos
+    BEQ lose_setup ; If Position of Ship is correct, you lost
+    ; Else Continue
+move_walls_0:
     CPY #%10000000 ; Check if Y is pos 0
     BEQ move_walls_1
     CPY #%11000000 ; Check if Y is pos 40
@@ -275,9 +229,90 @@ move_walls_3
     BNE move_walls
     RTS
 
-move_cursor_right:
-    LDA #%00010100 ; Move cursor right by 1 character
-    JSR lcd_instruction
+lose_setup:
+    ; From the position of Y-1 spawns an explosion and ends the game_loop
+    SEI
+    DEY
+    DEC change
+    TYA ; Move contents of Y into Accumulator
+    JSR lcd_instruction ; Move A to either position $1 or $40
+    LDA #%10100101  
+    JSR print_move_n_wait
+    LDA #%00101010
+    JSR print_move_n_wait
+    LDA #%11011011
+    JSR print_move_n_wait
+
+    LDA #%00100000
+    JSR print_char
+    JSR delay_5
+    
+    LDX #%0
+    LDA #%11000011
+    JSR lcd_instruction ; Move cursor message start
+    JMP lose
+
+move_ship:
+    PHA
+    TXA
+    PHA
+    TYA
+    PHA 
+    LDX pos
+    CPX #$0 ; If ship is top, move to bottom
+    BEQ move_to_bottom
+    ; Move ship from bottom to top
+    LDA #%11000000 ; Move current ship position
+    JSR lcd_instruction ; 
+    LDA #%00100000 ; Print Clear to Display
+    JSR print_char 
+    LDA #%10000000 ; Move new ship position
+    JSR lcd_instruction 
+    
+    ; Check if ship is already on top
+    LDX #$4
+check_ship_move_loop_t:
+    LDY $0202, X  ; Check all blocks
+    INY
+    CPY #%10000001
+    BEQ lose_setup
+    DEX ; Decrease X by 1
+    BNE check_ship_move_loop_t
+
+    LDA #%10101101 ; Print Ship to Display
+    JSR print_char 
+    LDA #$0
+    STA pos ; Update ship position
+    JMP move_ship_exit
+move_to_bottom:
+    ; Move ship from top to bottom
+    LDA #%10000000 ; Move current ship position
+    JSR lcd_instruction ; 
+    LDA #%00100000 ; Print Clear to Display
+    JSR print_char 
+    LDA #%11000000 ; Move new ship position
+    JSR lcd_instruction 
+    
+    ; Check if ship is already on bottom
+    LDX #$4
+check_ship_move_loop_b:
+    LDY $0202, X  ; Check all blocks
+    INY
+    CPY #%11000001
+    BEQ lose_setup
+    DEX ; Decrease X by 1
+    BNE check_ship_move_loop_b
+
+    LDA #%10101101 ; Print Ship to Display
+    JSR print_char 
+    LDA #$1
+    STA pos ; Update ship position  
+move_ship_exit:
+    PLA
+    TAY 
+    PLA
+    TAX
+    PLA
     RTS
 
 rand_gen: ; Use Linear Congruence a = 3 and b = 5
@@ -292,9 +327,7 @@ rand_gen: ; Use Linear Congruence a = 3 and b = 5
 spawn_wall:
     ; Decide Whether We Need to Spawn a top or bottom wall
     JSR rand_gen
-
     LDX block_n ; Load in block_n
-    LDY block_counter ; Load in block_counter
     CMP #$1 ; Check if Accum. contains a 1
     BEQ bottom_wall ; If Accum contains a 1, spawn bottom wall, else spawn top wall
     LDA #%10001111 ; Move Cursor to End of Top Display
@@ -308,27 +341,29 @@ bottom_wall:
 spawn_wall_end:
     LDA #%11111111 ; Send wall to display
     JSR print_char
-
     ; Adjust settings of the blocks
     CPX #$3 ; If block_n is 3, reduce to 0
     BEQ block_n_reset
     INX ; Increase counter of X
-    JMP check_counter
+    JMP counters_end
 block_n_reset:
     LDX #$0 ; change X to 0
-check_counter:
-    CPY #$4
-    BEQ counters_end
-    INY ; Increase counter of Y
 counters_end:
     STX block_n ; Store block counter 
-    STY block_counter ; Store total blocks value
     RTS
 
+
 nmi:
-    rti
+    RTI
 irq:
-    rti 
+    PHA
+    LDA #$1
+    STA change
+    INC counter
+irq_exit:
+    PLA
+    BIT PORTA
+    RTI 
 
 
     .org $fffa
