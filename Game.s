@@ -317,9 +317,11 @@ move_ship_exit:
 
 rand_gen: ; Use Linear Congruence a = 3 and b = 5
     LDA counter ; Get Seed
-    ASL A ; Multiply counter by 3 
-    ADC counter
-    ADC #$5 ; Add 5 to Accum.
+    ASL A ; Multiply counter by 7
+    ASL A ;
+    ASL A ;
+    SBC counter
+    ADC #$29 ; Add 41 to Accum.
     STA counter; Store new seed
     AND #%00000001 ; AND with #1 to keep last bit
     RTS
