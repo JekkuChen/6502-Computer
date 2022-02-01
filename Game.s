@@ -16,12 +16,12 @@ block2 = $0204 ; 1 byte
 block3 = $0205 ; 1 byte
 block4 = $0206 ; 1 byte
 block_n = $0207 ; 1 byte
-temp = $0208 ; 1 byte
 
 E = %10000000
 RW = %01000000
 RS = %00100000
 
+; Setup Code for System
     .org $8000
 reset:  
     LDX #$ff 
@@ -34,7 +34,7 @@ reset:
 
     LDA #%11111111 ; Set all pins on Port B to output 
     STA DDRB
-    
+
     LDA #%11100000 ; Set pins 5-7 on Port B to output
     STA DDRA 
 
@@ -64,22 +64,24 @@ reset:
     JSR spawn_wall ; Spawn a wall
     CLI ; Allow Interrupts 
 
+
+; Main Loop of the Game
 game_loop:
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr delay_5
-    jsr move_display_left
-    jsr spawn_wall ; Spawn a wall
-    jmp game_loop
+    JSR delay_5
+    JSR move_display_left
+    JSR delay_5
+    JSR move_display_left
+    JSR delay_5
+    JSR move_display_left
+    JSR delay_5
+    JSR move_display_left
+    JSR delay_5
+    JSR move_display_left
+    JSR spawn_wall ; Spawn a wall
+    JMP game_loop
 
 
-
+; Check if LCD is still busy and if so wait
 lcd_wait:
   pha ; Push Value of Reg A onto Reg Pointer
   lda #%00000000  ; Set port B to input
@@ -100,10 +102,12 @@ lcdbusy:
   pla
   rts ; Pull Value of Reg Pointer back on Reg A
 
+
+; Send Instruction Stored in Accumulator
 lcd_instruction:
     ; Send instruction to the LCD register
     ; Input: Register A contains the instruction that will be sent to the LCD register
-    jsr lcd_wait
+    JSR lcd_wait
     sta PORTB
     lda #0         ; Clear RS/RW/E bits
     sta PORTA
@@ -113,8 +117,10 @@ lcd_instruction:
     sta PORTA
     rts
 
+
+; Print Character Stored in ASCII in Accumulator
 print_char:
-    jsr lcd_wait
+    JSR lcd_wait
     sta PORTB
     lda #RS         ; Set RS; Clear RW/E bits
     sta PORTA
@@ -124,6 +130,8 @@ print_char:
     sta PORTA
     rts
 
+
+; Delay Function for 0.5 s
 delay_5: ; Generates a 0.5s delay (!# Note that this uses Y register) (About 500942 Cycles)
     PHA ; Push Accumulator
     TYA ; Move contents of Y into Accumulator
@@ -149,6 +157,8 @@ delay_52:
     PLA ; Pull Accumulator from Stack
     RTS 
 
+
+; Helper Function for delay_5 
 delay: ; Generates a 1 ms delay (!# Note that this uses X register) (About 1002 Cycles)
     LDX change 
     CPX #$0
@@ -164,6 +174,9 @@ delay_1:
     DEX ; Decrease X by 1 
     BNE delay_1 ; Continue delay if not finished
     RTS 
+
+
+; Print Game Over Screen, and infinite loop
 lose:
     LDA message,x
     BEQ end
@@ -172,9 +185,11 @@ lose:
     JMP lose
      
 end:
-    jmp end
+    JMP end
 message: .asciiz "You Lose!!"
 
+
+; Helper Function for Lose_Setup
 print_move_n_wait: ; Use by lose_setup only
     JSR print_char
     TYA ; Move contents of Y into Accumulator
@@ -182,6 +197,8 @@ print_move_n_wait: ; Use by lose_setup only
     JSR delay_5
     RTS
 
+
+; Move all walls left by one position, check for collision
 move_display_left:
     ; Move all walls to the left once 
     ; # NOTE: This cannot be called without having atleast 1 wall spawned in
@@ -230,6 +247,8 @@ move_walls_3
     BNE move_walls
     RTS
 
+
+; Setup Code for Loss Screen, Branch Here for LOSE
 lose_setup:
     ; From the position of Y-1 spawns an explosion and ends the game_loop
     SEI
@@ -254,6 +273,8 @@ lose_setup:
     JSR lcd_instruction ; Move cursor message start
     JMP lose
 
+
+; Move ship to the up or down, check for collision
 move_ship:
     PHA
     TXA
@@ -317,7 +338,9 @@ move_ship_exit:
     PLA
     RTS
 
-rand_gen: ; Use Linear Congruence a = 3 and b = 5
+
+; Generate Random # Using Linear Congruence a = 7 and b = 41
+rand_gen:
     LDA counter ; Get Seed
     ASL A ; Multiply counter by 7
     ASL A ;
@@ -328,6 +351,7 @@ rand_gen: ; Use Linear Congruence a = 3 and b = 5
     AND #%00000001 ; AND with #1 to keep last bit
     RTS
 
+; Randomly Spawn a New Wall on either Top or Bottom
 spawn_wall:
     ; Decide Whether We Need to Spawn a top or bottom wall
     JSR rand_gen
@@ -357,6 +381,7 @@ counters_end:
     RTS
 
 
+; Interrupts and sets change flag to 1, increments counter to increase randomness
 nmi:
     RTI
 irq:
@@ -364,7 +389,6 @@ irq:
     LDA #$1
     STA change
     INC counter
-irq_exit:
     PLA
     BIT PORTA
     RTI 
