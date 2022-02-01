@@ -34,12 +34,13 @@ reset:
 
     LDA #%11111111 ; Set all pins on Port B to output 
     STA DDRB
+    
     LDA #%11100000 ; Set pins 5-7 on Port B to output
     STA DDRA 
 
     LDA #%00111000 ; Set 8-bit mode; two line display; 5 x 8 font
     JSR lcd_instruction
-    LDA #%00001110 ; Display on; cursor on; blink off
+    LDA #%00001100 ; Display on; cursor on; blink off
     JSR lcd_instruction
     LDA #%00000110 ; Increment and shift cursor; don't shift display (scroll)
     JSR lcd_instruction
@@ -232,8 +233,9 @@ move_walls_3
 lose_setup:
     ; From the position of Y-1 spawns an explosion and ends the game_loop
     SEI
+    LDA #$0
+    STA change
     DEY
-    DEC change
     TYA ; Move contents of Y into Accumulator
     JSR lcd_instruction ; Move A to either position $1 or $40
     LDA #%10100101  
