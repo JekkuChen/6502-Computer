@@ -83,24 +83,24 @@ game_loop:
 
 ; Check if LCD is still busy and if so wait
 lcd_wait:
-  pha ; Push Value of Reg A onto Reg Pointer
-  lda #%00000000  ; Set port B to input
-  sta DDRB
+  PHA ; Push Value of Reg A onto Reg Pointer
+  LDA #%00000000  ; Set port B to input
+  STA DDRB
 lcdbusy:
-  lda #RW  ; Enable R/W ; Reset E & RS
-  sta PORTA
-  lda #(RW | E)  ; Enable E 
-  sta PORTA
-  lda PORTB      ;Bitwise AND contents of PORTB (Busy Flag) to determine if same
-  and #%10000000 
-  bne lcdbusy     ; if Z = 0, Busy, if Z = 1, Not Busy
+  LDA #RW  ; Enable R/W ; Reset E & RS
+  STA PORTA
+  LDA #(RW | E)  ; Enable E 
+  STA PORTA
+  LDA PORTB      ;Bitwise AND contents of PORTB (Busy Flag) to determine if same
+  AND #%10000000 
+  BNE lcdbusy     ; if Z = 0, Busy, if Z = 1, Not Busy
 
-  lda #RW
-  sta PORTA
-  lda #%11111111  ; Port B is output
-  sta DDRB
-  pla
-  rts ; Pull Value of Reg Pointer back on Reg A
+  LDA #RW
+  STA PORTA
+  LDA #%11111111  ; Port B is output
+  STA DDRB
+  PLA
+  RTS ; Pull Value of Reg Pointer back on Reg A
 
 
 ; Send Instruction Stored in Accumulator
